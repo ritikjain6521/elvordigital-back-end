@@ -7,21 +7,21 @@ const seedDefaultData = async () => {
   try {
     // 1. Seed Admin User
     const existingAdmin = await AdminUser.findOne({
-      $or: [{ username: "admin" }, { email: "admin@zenovavibe.com" }],
+      $or: [{ username: "admin" }, { email: "admin@elvoradigital.com" }],
     });
 
     if (!existingAdmin) {
       console.log("[Seed] Creating default administrator account...");
       await AdminUser.create({
         username: "admin",
-        email: "admin@zenovavibe.com",
+        email: "admin@elvoradigital.com",
         password: "Admin@123456", // Pre-hashed by model schema pre-save hook
-        name: "ZenovaVibe Chief Admin",
+        name: "ElvoraDigital Chief Admin",
         role: "OWNER",
         status: "active",
         avatar: "ZA",
       });
-      console.log("[Seed] Default Admin created: User ID: 'admin' / 'admin@zenovavibe.com' | Password: 'Admin@123456'");
+      console.log("[Seed] Default Admin created: User ID: 'admin' / 'admin@elvoradigital.com' | Password: 'Admin@123456'");
     }
 
     // 2. Seed Categories
@@ -99,10 +99,10 @@ const seedDefaultData = async () => {
             "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1000&q=80",
           ],
           thumbnail: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=1000&q=80",
-          googleDriveLink: "https://drive.google.com/drive/folders/1zenovavibe-meta-ads-2026-pro-master-vault",
-          accessFolderLink: "https://cloud.zenovavibe.com/folders/meta-ads-mastery-2026",
+          googleDriveLink: "https://drive.google.com/drive/folders/1elvoradigital-meta-ads-2026-pro-master-vault",
+          accessFolderLink: "https://cloud.elvoradigital.com/folders/meta-ads-mastery-2026",
           videoLink: "https://player.vimeo.com/video/849201940",
-          downloadFileUrl: "https://assets.zenovavibe.com/meta-ads-mastery-2026-pro-bundle.zip",
+          downloadFileUrl: "https://assets.elvoradigital.com/meta-ads-mastery-2026-pro-bundle.zip",
 
           // Section 1: Overview & Deliverables
           overviewText:
@@ -189,7 +189,7 @@ const seedDefaultData = async () => {
             "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1000&q=80",
           ],
           thumbnail: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1000&q=80",
-          googleDriveLink: "https://drive.google.com/drive/folders/1zenovavibe-ai-prompts-vault",
+          googleDriveLink: "https://drive.google.com/drive/folders/1elvoradigital-ai-prompts-vault",
           deliverables: ["10,000+ Categorized Prompts", "Notion Workspace Duplication", "Weekly Prompt Updates"],
         },
       ]);
@@ -203,11 +203,11 @@ const seedDefaultData = async () => {
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: parseInt(process.env.SMTP_PORT) || 587,
         encryption: "tls",
-        username: process.env.SMTP_USER || "access@zenovavibe.com",
+        username: process.env.SMTP_USER || "access@elvoradigital.com",
         password: process.env.SMTP_PASS || "",
-        fromName: process.env.FROM_NAME || "ZenovaVibe Access",
-        fromEmail: process.env.FROM_EMAIL || "access@zenovavibe.com",
-        replyToEmail: process.env.REPLY_TO || "support@zenovavibe.com",
+        fromName: process.env.FROM_NAME || "ElvoraDigital Access",
+        fromEmail: process.env.FROM_EMAIL || "access@elvoradigital.com",
+        replyToEmail: process.env.REPLY_TO || "support@elvoradigital.com",
         isVerified: false,
       });
     }

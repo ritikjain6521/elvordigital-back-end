@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: zenovavibe-backend
+    name: elvoradigital-backend
     env: node
     plan: free
     buildCommand: npm install
@@ -28,7 +28,7 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: FROM_NAME
-        value: ZenovaVibe Access
+        value: ElvoraDigital Access
       - key: FROM_EMAIL
         sync: false
       - key: CLIENT_URL

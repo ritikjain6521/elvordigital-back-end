@@ -6,7 +6,7 @@ const { protectAdmin } = require("../middleware/auth");
 const router = express.Router();
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "zenovavibe_super_secret_jwt_key_2026_futurecept", {
+  return jwt.sign({ id }, process.env.JWT_SECRET || "elvoradigital_super_secret_jwt_key_2026_futurecept", {
     expiresIn: "30d",
   });
 };

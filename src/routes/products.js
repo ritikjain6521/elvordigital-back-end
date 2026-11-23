@@ -101,6 +101,16 @@ router.post("/", protectAdmin, async (req, res) => {
       previewVideoUrl,
       bonuses,
       faqs,
+
+      // Point 2: Ads & Marketing Copy
+      adCopy,
+
+      // Point 2: Extended Sections
+      curriculum,
+      targetAudienceList,
+      requirements,
+      guaranteeText,
+      urgencyNotice,
     } = req.body;
 
     if (!name || !price) {
@@ -153,6 +163,21 @@ router.post("/", protectAdmin, async (req, res) => {
       previewVideoUrl: previewVideoUrl || "",
       bonuses: bonuses || [],
       faqs: faqs || [],
+
+      adCopy: adCopy || {
+        headline: "",
+        hook: "",
+        primaryText: "",
+        callToAction: "Get Instant Access",
+        targetAudience: "",
+        adMediaUrl: "",
+      },
+
+      curriculum: curriculum || [],
+      targetAudienceList: targetAudienceList || [],
+      requirements: requirements || [],
+      guaranteeText: guaranteeText || "100% Satisfaction Guarantee: Instant verified access upon purchase.",
+      urgencyNotice: urgencyNotice || "",
     });
 
     const saved = await newProduct.save();
@@ -200,6 +225,74 @@ router.delete("/:id", protectAdmin, async (req, res) => {
   } catch (error) {
     console.error("[Products] Delete error:", error);
     return res.status(500).json({ success: false, message: "Failed to delete product." });
+  }
+});
+
+// @route   POST /api/products/:idOrSlug/reviews
+// @desc    Submit a verified customer review & rating
+// @access  Public
+router.post("/:idOrSlug/reviews", async (req, res) => {
+  try {
+    const { idOrSlug } = req.params;
+    const { author, rating, title, comment } = req.body;
+
+    if (!author || !rating || !comment) {
+      return res.status(400).json({
+        success: false,
+        message: "Author name, rating (1-5), and review comment are required.",
+      });
+    }
+
+    const numericRating = Math.min(5, Math.max(1, Number(rating) || 5));
+
+    let product;
+    if (idOrSlug.match(/^[0-9a-fA-F]{24}$/)) {
+      product = await Product.findById(idOrSlug);
+    }
+    if (!product) {
+      product = await Product.findOne({ slug: idOrSlug.toLowerCase() });
+    }
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product not found." });
+    }
+
+    const newReview = {
+      author: author.trim(),
+      rating: numericRating,
+      title: title ? title.trim() : "",
+      comment: comment.trim(),
+      date: new Date(),
+      verified: true,
+    };
+
+    if (!Array.isArray(product.reviews)) {
+      product.reviews = [];
+    }
+
+    product.reviews.unshift(newReview);
+
+    // Recalculate average rating
+    const totalScore = product.reviews.reduce((acc, r) => acc + (r.rating || 5), 0);
+    product.rating = Number((totalScore / product.reviews.length).toFixed(1));
+    product.reviewCount = product.reviews.length;
+
+    await product.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Review submitted successfully! Thank you for your feedback.",
+      rating: product.rating,
+      reviewsCount: product.reviewCount,
+      reviews: product.reviews,
+      newReview,
+    });
+  } catch (error) {
+    console.error("[Products] Review submission error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to submit review.",
+    });
   }
 });
 

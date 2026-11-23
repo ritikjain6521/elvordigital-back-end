@@ -43,7 +43,7 @@ router.post("/create-order", async (req, res) => {
     }
 
     const razorpay = getRazorpayInstance();
-    const orderNumber = `ZNV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderNumber = `ELV-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Razorpay amount in paise (1 INR = 100 paise)
     const options = {
@@ -78,43 +78,62 @@ router.post("/create-order", async (req, res) => {
             prod = await Product.findOne({ name: item.productName });
           }
 
-          // 2. Look up Digital Asset Vault entry for this product
+          // 2. Robust Look up of Digital Asset Vault entry for this product
           const prodId = prod ? String(prod._id) : item.productId;
           const prodName = prod ? prod.name : item.productName;
+          const searchTerms = [prodId, item.productId, prod?.slug, prodName, item.productName].filter(Boolean);
+
+          const safeRegexName = (prodName || item.productName || "").trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
           digitalAsset = await DigitalAsset.findOne({
             $or: [
-              { associatedProductId: prodId },
-              { associatedProductId: item.productId },
-              { associatedProductName: prodName },
-              { associatedProductName: item.productName },
+              { associatedProductId: { $in: searchTerms } },
+              { associatedProductName: { $in: searchTerms } },
+              ...(safeRegexName ? [{ associatedProductName: new RegExp(`^${safeRegexName}`, "i") }] : []),
             ],
           }).sort({ createdAt: -1 });
         } catch (e) {
           console.warn("[Payment] Deliverables lookup warning:", e.message);
         }
 
+        const itemSlug = prod?.slug || (item.productId || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
         // Direct Download URL from uploaded file
         let directFileDownload = "";
         if (digitalAsset && digitalAsset.fileUrl && digitalAsset.fileUrl.trim()) {
           directFileDownload = digitalAsset.fileUrl.trim().startsWith("http")
             ? digitalAsset.fileUrl.trim()
-            : `http://localhost:5000${digitalAsset.fileUrl.trim()}`;
-        } else if (prod && prod.downloadFileUrl && prod.downloadFileUrl.trim() && !prod.downloadFileUrl.includes("assets.zenovavibe.com") && !prod.downloadFileUrl.includes("/api/download/")) {
+            : `${process.env.CLIENT_URL ? "" : "http://localhost:5000"}${digitalAsset.fileUrl.trim()}`;
+        } else if (prod && prod.downloadFileUrl && prod.downloadFileUrl.trim() && !prod.downloadFileUrl.includes("assets.elvoradigital.com") && !prod.downloadFileUrl.includes("/api/download/")) {
           directFileDownload = prod.downloadFileUrl.trim();
         }
 
-        // Exact Google Drive Link
-        const googleDriveLink =
+        // Exact Google Drive Link (Filter out fake placeholder templates)
+        let googleDriveLink =
           (digitalAsset && digitalAsset.googleDriveLink && digitalAsset.googleDriveLink.trim()) ||
           (prod && prod.googleDriveLink && prod.googleDriveLink.trim()) ||
-          (item.googleDriveLink && !item.googleDriveLink.includes("1zenovavibe") ? item.googleDriveLink.trim() : "");
+          (item.googleDriveLink && item.googleDriveLink.trim()) ||
+          "";
 
-        // Exact Cloud Resource Folder
-        const accessFolderLink =
+        if (googleDriveLink.includes("1elvoradigital") || googleDriveLink.includes("1EXAMPLE_REAL")) {
+          googleDriveLink = "";
+        }
+
+        // Exact Cloud Resource Folder Link (Filter out non-existent cloud.elvoradigital.com)
+        let accessFolderLink =
           (digitalAsset && digitalAsset.accessFolderLink && digitalAsset.accessFolderLink.trim()) ||
           (prod && prod.accessFolderLink && prod.accessFolderLink.trim()) ||
-          (item.accessFolderLink && !item.accessFolderLink.includes("cloud.zenovavibe.com") ? item.accessFolderLink.trim() : "");
+          (item.accessFolderLink && item.accessFolderLink.trim()) ||
+          "";
+
+        if (accessFolderLink.includes("cloud.elvoradigital.com")) {
+          accessFolderLink = "";
+        }
+
+        // If no external cloud folder provided, route to in-app Cloud Resource Vault portal
+        if (!accessFolderLink && itemSlug) {
+          accessFolderLink = `/vault/${itemSlug}`;
+        }
 
         // Exact Video Lesson Link
         const videoLink =

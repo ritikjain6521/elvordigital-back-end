@@ -29,7 +29,7 @@ router.get("/:slugOrId", async (req, res) => {
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="ZenovaVibe-${slug}-master-bundle.zip"`
+      `attachment; filename="ElvoraDigital-${slug}-master-bundle.zip"`
     );
 
     const archive = new ZipArchive({
@@ -48,11 +48,11 @@ router.get("/:slugOrId", async (req, res) => {
 
     // 1. License & Welcome document
     const readmeContent = `========================================================================
-ZENOVA VIBE – OFFICIAL DIGITAL PRODUCT MASTER VAULT
+ELVORA VIBE – OFFICIAL DIGITAL PRODUCT MASTER VAULT
 Product: ${title}
 Format: ${format}
 License: Commercial Creator & Personal Growth License (Verified)
-Issued for: ZenovaVibe Authenticated Customer
+Issued for: ElvoraDigital Authenticated Customer
 ========================================================================
 
 THANK YOU FOR YOUR PURCHASE!
@@ -75,10 +75,10 @@ HOW TO ACCESS YOUR LIVE CLOUD WORKSPACES:
 3. Review '3-SWIPE-FILES-AND-TEMPLATES.txt' for copy-paste formulas and viral frameworks.
 
 NEED DEDICATED SUPPORT?
-Contact our VIP Help Desk: support@zenovavibe.com
+Contact our VIP Help Desk: support@elvoradigital.com
 Website: http://localhost:3000
 
-© 2026 ZenovaVibe Marketplace. All rights reserved.
+© 2026 ElvoraDigital Marketplace. All rights reserved.
 `;
     archive.append(readmeContent, { name: "README-ACCESS-INSTRUCTIONS.txt" });
 
@@ -87,7 +87,7 @@ Website: http://localhost:3000
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${title} – ZenovaVibe Master Playbook</title>
+  <title>${title} – ElvoraDigital Master Playbook</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #090816; color: #ffffff; padding: 40px 20px; line-height: 1.6; }
     .container { max-width: 800px; margin: 0 auto; background: #17152E; border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
@@ -135,7 +135,7 @@ Website: http://localhost:3000
 
     // 4. Swipe file / prompts template
     const swipeFile = `========================================================================
-ZENOVA VIBE – COPY & FRAMEWORK SWIPE FILES (2026 EDITION)
+ELVORA VIBE – COPY & FRAMEWORK SWIPE FILES (2026 EDITION)
 Product: ${title}
 ========================================================================
 

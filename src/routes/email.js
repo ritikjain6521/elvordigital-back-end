@@ -17,11 +17,11 @@ router.get("/config", protectAdmin, async (req, res) => {
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: parseInt(process.env.SMTP_PORT) || 587,
         encryption: "tls",
-        username: process.env.SMTP_USER || "access@zenovavibe.com",
+        username: process.env.SMTP_USER || "access@elvoradigital.com",
         password: process.env.SMTP_PASS || "",
-        fromName: process.env.FROM_NAME || "ZenovaVibe Access",
-        fromEmail: process.env.FROM_EMAIL || "access@zenovavibe.com",
-        replyToEmail: process.env.REPLY_TO || "support@zenovavibe.com",
+        fromName: process.env.FROM_NAME || "ElvoraDigital Access",
+        fromEmail: process.env.FROM_EMAIL || "access@elvoradigital.com",
+        replyToEmail: process.env.REPLY_TO || "support@elvoradigital.com",
         isVerified: false,
       });
     }

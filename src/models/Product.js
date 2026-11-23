@@ -54,6 +54,35 @@ const productSchema = new mongoose.Schema(
     // 4. Product FAQs
     faqs: { type: mongoose.Schema.Types.Mixed, default: [] },
 
+    // Point 2: Meta Ads & Marketing Campaign Copy
+    adCopy: {
+      headline: { type: String, default: "" },
+      hook: { type: String, default: "" },
+      primaryText: { type: String, default: "" },
+      callToAction: { type: String, default: "Get Instant Access" },
+      targetAudience: { type: String, default: "" },
+      adMediaUrl: { type: String, default: "" },
+    },
+
+    // Point 2: Extended Details & Course Sections
+    curriculum: { type: mongoose.Schema.Types.Mixed, default: [] },
+    targetAudienceList: { type: mongoose.Schema.Types.Mixed, default: [] },
+    requirements: { type: mongoose.Schema.Types.Mixed, default: [] },
+    guaranteeText: { type: String, default: "100% Satisfaction Guarantee: Instant verified access upon purchase." },
+    urgencyNotice: { type: String, default: "" },
+
+    // Point 3: Customer Reviews & Ratings
+    reviews: [
+      {
+        author: { type: String, required: true },
+        rating: { type: Number, required: true, min: 1, max: 5 },
+        title: { type: String, default: "" },
+        comment: { type: String, required: true },
+        date: { type: Date, default: Date.now },
+        verified: { type: Boolean, default: true },
+      },
+    ],
+
     totalSales: { type: Number, default: 0 },
     totalRevenue: { type: Number, default: 0 },
   },

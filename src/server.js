@@ -55,7 +55,7 @@ app.use("/api/admin", analyticsRoutes);
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    service: "ZenovaVibe Backend API",
+    service: "ElvoraDigital Backend API",
     mongodb: "Connected",
     timestamp: new Date().toISOString(),
   });
@@ -66,5 +66,5 @@ const seedDefaultData = require("./scripts/seedHelper");
 seedDefaultData();
 
 app.listen(PORT, () => {
-  console.log(`[ZenovaVibe Backend] Server listening on http://localhost:${PORT}`);
+  console.log(`[ElvoraDigital Backend] Server listening on http://localhost:${PORT}`);
 });

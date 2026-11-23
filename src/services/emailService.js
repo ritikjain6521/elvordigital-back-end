@@ -2,7 +2,7 @@ const nodemailer = require("nodemailer");
 const EmailConfig = require("../models/EmailConfig");
 
 // Universal Email Transporter / Dispatcher (Supports Google Apps Script Webhook, Resend API, & SMTP)
-const dispatchEmail = async ({ to, subject, html, fromName = "ZenovaVibe Access", fromEmail = "access@zenovavibe.com" }) => {
+const dispatchEmail = async ({ to, subject, html, fromName = "ElvoraDigital Access", fromEmail = "access@elvoradigital.com" }) => {
   const cfg = await EmailConfig.findOne().catch(() => null);
 
   const googleScriptUrl =
@@ -93,25 +93,25 @@ const dispatchEmail = async ({ to, subject, html, fromName = "ZenovaVibe Access"
 // Send real-time test diagnostic email
 const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
   const cfg = testConfig || (await EmailConfig.findOne().catch(() => null));
-  const fromName = cfg?.fromName || process.env.FROM_NAME || "ZenovaVibe Access";
+  const fromName = cfg?.fromName || process.env.FROM_NAME || "ElvoraDigital Access";
   const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "ritikjain6224@gmail.com";
 
   const html = `
     <div style="font-family: Arial, sans-serif; background-color: #090816; color: #ffffff; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #252249;">
-      <h2 style="color: #8B5CF6; margin-top: 0;">⚡ ZenovaVibe Production Email Verified</h2>
-      <p style="color: #A7A3BC; font-size: 14px;">Your ZenovaVibe marketplace email configuration is transmitting live messages successfully.</p>
+      <h2 style="color: #8B5CF6; margin-top: 0;">⚡ ElvoraDigital Production Email Verified</h2>
+      <p style="color: #A7A3BC; font-size: 14px;">Your ElvoraDigital marketplace email configuration is transmitting live messages successfully.</p>
       <div style="background-color: #17152E; padding: 15px; border-radius: 8px; border: 1px solid #322f5a; margin: 20px 0;">
         <p style="margin: 4px 0; font-size: 13px; color: #22D3EE;"><strong>Sender:</strong> ${fromName} &lt;${fromEmail}&gt;</p>
         <p style="margin: 4px 0; font-size: 13px; color: #A7A3BC;"><strong>Recipient:</strong> ${toEmail}</p>
         <p style="margin: 4px 0; font-size: 13px; color: #A7A3BC;"><strong>Dispatched At:</strong> ${new Date().toISOString()}</p>
       </div>
-      <p style="color: #8B5CF6; font-size: 12px;">© 2026 ZenovaVibe Marketplace Inc. • Automated Email Delivery</p>
+      <p style="color: #8B5CF6; font-size: 12px;">© 2026 ElvoraDigital Marketplace Inc. • Automated Email Delivery</p>
     </div>
   `;
 
   return await dispatchEmail({
     to: toEmail,
-    subject: "⚡ ZenovaVibe Production Email Connection Verified",
+    subject: "⚡ ElvoraDigital Production Email Connection Verified",
     html,
     fromName,
     fromEmail,
@@ -122,7 +122,7 @@ const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
 const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber, items, totalAmount }) => {
   try {
     const cfg = await EmailConfig.findOne().catch(() => null);
-    const fromName = cfg?.fromName || process.env.FROM_NAME || "ZenovaVibe Digital Access";
+    const fromName = cfg?.fromName || process.env.FROM_NAME || "ElvoraDigital Digital Access";
     const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "ritikjain6224@gmail.com";
     const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
 
@@ -211,8 +211,8 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
         </div>
 
         <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 30px;">
-          Need assistance? Contact our VIP Help Desk at <a href="mailto:support@zenovavibe.com" style="color: #8B5CF6;">support@zenovavibe.com</a><br/>
-          © 2026 ZenovaVibe Marketplace Inc.
+          Need assistance? Contact our VIP Help Desk at <a href="mailto:support@elvoradigital.com" style="color: #8B5CF6;">support@elvoradigital.com</a><br/>
+          © 2026 ElvoraDigital Marketplace Inc.
         </p>
       </div>
     `;
