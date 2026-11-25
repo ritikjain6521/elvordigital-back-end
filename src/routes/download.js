@@ -59,6 +59,10 @@ router.get("/:slugOrId", async (req, res) => {
     }
 
     if (downloadUrl) {
+      if (!downloadUrl.startsWith("http")) {
+        const backendBase = process.env.BACKEND_URL || "https://elvordigital-back-end.onrender.com";
+        downloadUrl = `${backendBase.replace(/\/+$/, "")}/${downloadUrl.replace(/^\/+/, "")}`;
+      }
       return res.redirect(downloadUrl);
     }
 

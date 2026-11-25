@@ -14,33 +14,42 @@ const dispatchEmail = async ({
   try {
     const cfg = overrideConfig || (await EmailConfig.findOne().catch(() => null));
 
+    const isPlaceholder = (val) =>
+      !val ||
+      typeof val !== "string" ||
+      val.includes("YOUR_HOSTINGER") ||
+      val.includes("EXAMPLE");
+
     const host =
       overrideConfig?.host ||
       process.env.SMTP_HOST ||
       cfg?.host ||
       "smtp.hostinger.com";
+
+    // Port 587 is standard STARTTLS for cloud environments (Render blocks 465)
     const port =
       Number(overrideConfig?.port) ||
       parseInt(process.env.SMTP_PORT, 10) ||
       Number(cfg?.port) ||
-      465;
+      587;
+
     const user =
       overrideConfig?.username ||
-      process.env.SMTP_USER ||
+      (!isPlaceholder(process.env.SMTP_USER) ? process.env.SMTP_USER : null) ||
       cfg?.username ||
-      "";
+      "info@elvordigital.com";
+
     const pass =
       overrideConfig?.password ||
-      process.env.SMTP_PASS ||
+      (!isPlaceholder(process.env.SMTP_PASS) ? process.env.SMTP_PASS : null) ||
       cfg?.password ||
       "";
 
+    // Port 465 is SSL (secure: true). Port 587 is STARTTLS (secure: false).
     const secure =
-      overrideConfig?.encryption
-        ? overrideConfig.encryption === "ssl" || port === 465
-        : process.env.SMTP_SECURE !== undefined
-        ? process.env.SMTP_SECURE === "true"
-        : cfg?.encryption === "ssl" || port === 465;
+      overrideConfig?.secure !== undefined
+        ? Boolean(overrideConfig.secure)
+        : port === 465;
 
     const resolvedFromName =
       fromName ||
@@ -132,6 +141,7 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
     const fromName = process.env.FROM_NAME || cfg?.fromName || "ElvorDigital";
     const fromEmail = process.env.FROM_EMAIL || cfg?.fromEmail || "info@elvordigital.com";
     const clientUrl = process.env.CLIENT_URL || "https://elvordigital-front-end.vercel.app";
+    const backendBaseUrl = process.env.BACKEND_URL || "https://elvordigital-back-end.onrender.com";
 
     const itemsHtml = (items || [])
       .map((item) => {
@@ -142,7 +152,12 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
             ? `${clientUrl}${rawFolderUrl}`
             : rawFolderUrl
           : "";
-        const downloadUrl = item.downloadFileUrl && item.downloadFileUrl.trim() ? item.downloadFileUrl.trim() : "";
+        const rawDownloadUrl = item.downloadFileUrl && item.downloadFileUrl.trim() ? item.downloadFileUrl.trim() : "";
+        const downloadUrl = rawDownloadUrl
+          ? rawDownloadUrl.startsWith("http")
+            ? rawDownloadUrl
+            : `${backendBaseUrl.replace(/\/+$/, "")}/${rawDownloadUrl.replace(/^\/+/, "")}`
+          : "";
         const videoUrl = item.videoLink && item.videoLink.trim() ? item.videoLink.trim() : "";
 
         const buttons = [];

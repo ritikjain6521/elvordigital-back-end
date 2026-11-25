@@ -75,26 +75,33 @@ router.post("/", async (req, res) => {
         const assetDownload = digitalAsset?.fileUrl?.trim() || "";
         const itemDownload = item?.downloadFileUrl?.trim() || "";
 
+        const resolveDirectDownloadUrl = (url) => {
+          if (!url || typeof url !== "string") return "";
+          const trimmed = url.trim();
+          if (!trimmed) return "";
+          if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+          const backendBase = process.env.BACKEND_URL || "https://elvordigital-back-end.onrender.com";
+          return `${backendBase.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
+        };
+
         if (
           prodDownload &&
           !prodDownload.includes("assets.ElvorDigital.com") &&
           !prodDownload.includes("/api/download/")
         ) {
-          directFileDownload = prodDownload;
+          directFileDownload = resolveDirectDownloadUrl(prodDownload);
         } else if (
           assetDownload &&
           !assetDownload.includes("assets.ElvorDigital.com") &&
           !assetDownload.includes("/api/download/")
         ) {
-          directFileDownload = assetDownload.startsWith("http")
-            ? assetDownload
-            : `${process.env.CLIENT_URL ? "" : "http://localhost:5000"}${assetDownload}`;
+          directFileDownload = resolveDirectDownloadUrl(assetDownload);
         } else if (
           itemDownload &&
           !itemDownload.includes("assets.ElvorDigital.com") &&
           !itemDownload.includes("/api/download/")
         ) {
-          directFileDownload = itemDownload;
+          directFileDownload = resolveDirectDownloadUrl(itemDownload);
         }
 
         // Exact Google Drive Link (strictly from Product or Digital Asset Vault)
