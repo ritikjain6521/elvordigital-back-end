@@ -8,7 +8,7 @@ const emailConfigSchema = new mongoose.Schema(
     encryption: { type: String, enum: ["tls", "ssl", "none"], default: "tls" },
     username: { type: String, default: "" },
     password: { type: String, default: "" },
-    fromName: { type: String, default: "ElvoraDigital" },
+    fromName: { type: String, default: "ElvorDigital" },
     fromEmail: { type: String, default: "info@elvordigital.com" },
     replyToEmail: { type: String, default: "support@elvordigital.com" },
     isVerified: { type: Boolean, default: false },

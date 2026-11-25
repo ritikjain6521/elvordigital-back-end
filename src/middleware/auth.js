@@ -7,7 +7,7 @@ const protectAdmin = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || "elvoradigital_super_secret_jwt_key_2026_futurecept");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "ElvorDigital_super_secret_jwt_key_2026_futurecept");
       req.user = await AdminUser.findById(decoded.id).select("-password");
 
       if (req.user && req.user.status === "active") {

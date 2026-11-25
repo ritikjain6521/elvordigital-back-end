@@ -47,7 +47,7 @@ const dispatchEmail = async ({
       overrideConfig?.fromName ||
       process.env.FROM_NAME ||
       cfg?.fromName ||
-      "ElvoraDigital";
+      "ElvorDigital";
 
     const resolvedFromEmail =
       fromEmail ||
@@ -95,7 +95,7 @@ const dispatchEmail = async ({
 // Send real-time test diagnostic email
 const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
   const cfg = testConfig || (await EmailConfig.findOne().catch(() => null));
-  const fromName = testConfig?.fromName || process.env.FROM_NAME || cfg?.fromName || "ElvoraDigital";
+  const fromName = testConfig?.fromName || process.env.FROM_NAME || cfg?.fromName || "ElvorDigital";
   const fromEmail =
     testConfig?.fromEmail ||
     process.env.FROM_EMAIL ||
@@ -104,20 +104,20 @@ const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
 
   const html = `
     <div style="font-family: Arial, sans-serif; background-color: #090816; color: #ffffff; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #252249;">
-      <h2 style="color: #8B5CF6; margin-top: 0;">⚡ ElvoraDigital SMTP Email Verified</h2>
-      <p style="color: #A7A3BC; font-size: 14px;">Your ElvoraDigital marketplace SMTP email configuration is transmitting live messages successfully.</p>
+      <h2 style="color: #8B5CF6; margin-top: 0;">⚡ ElvorDigital SMTP Email Verified</h2>
+      <p style="color: #A7A3BC; font-size: 14px;">Your ElvorDigital marketplace SMTP email configuration is transmitting live messages successfully.</p>
       <div style="background-color: #17152E; padding: 15px; border-radius: 8px; border: 1px solid #322f5a; margin: 20px 0;">
         <p style="margin: 4px 0; font-size: 13px; color: #22D3EE;"><strong>Sender:</strong> ${fromName} &lt;${fromEmail}&gt;</p>
         <p style="margin: 4px 0; font-size: 13px; color: #A7A3BC;"><strong>Recipient:</strong> ${toEmail}</p>
         <p style="margin: 4px 0; font-size: 13px; color: #A7A3BC;"><strong>Dispatched At:</strong> ${new Date().toISOString()}</p>
       </div>
-      <p style="color: #8B5CF6; font-size: 12px;">© 2026 ElvoraDigital Marketplace Inc. • Automated SMTP Delivery</p>
+      <p style="color: #8B5CF6; font-size: 12px;">© 2026 ElvorDigital Marketplace Inc. • Automated SMTP Delivery</p>
     </div>
   `;
 
   return await dispatchEmail({
     to: toEmail,
-    subject: "⚡ ElvoraDigital SMTP Email Connection Verified",
+    subject: "⚡ ElvorDigital SMTP Email Connection Verified",
     html,
     fromName,
     fromEmail,
@@ -129,7 +129,7 @@ const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
 const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber, items, totalAmount }) => {
   try {
     const cfg = await EmailConfig.findOne().catch(() => null);
-    const fromName = process.env.FROM_NAME || cfg?.fromName || "ElvoraDigital";
+    const fromName = process.env.FROM_NAME || cfg?.fromName || "ElvorDigital";
     const fromEmail = process.env.FROM_EMAIL || cfg?.fromEmail || "info@elvordigital.com";
     const clientUrl = process.env.CLIENT_URL || "https://elvordigital-front-end.vercel.app";
 
@@ -224,7 +224,7 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
 
         <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 30px;">
           Need assistance? Contact our VIP Help Desk at <a href="mailto:support@elvordigital.com" style="color: #8B5CF6;">support@elvordigital.com</a><br/>
-          © 2026 ElvoraDigital Marketplace Inc.
+          © 2026 ElvorDigital Marketplace Inc.
         </p>
       </div>
     `;

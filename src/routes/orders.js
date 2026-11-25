@@ -77,13 +77,13 @@ router.post("/", async (req, res) => {
 
         if (
           prodDownload &&
-          !prodDownload.includes("assets.elvoradigital.com") &&
+          !prodDownload.includes("assets.ElvorDigital.com") &&
           !prodDownload.includes("/api/download/")
         ) {
           directFileDownload = prodDownload;
         } else if (
           assetDownload &&
-          !assetDownload.includes("assets.elvoradigital.com") &&
+          !assetDownload.includes("assets.ElvorDigital.com") &&
           !assetDownload.includes("/api/download/")
         ) {
           directFileDownload = assetDownload.startsWith("http")
@@ -91,7 +91,7 @@ router.post("/", async (req, res) => {
             : `${process.env.CLIENT_URL ? "" : "http://localhost:5000"}${assetDownload}`;
         } else if (
           itemDownload &&
-          !itemDownload.includes("assets.elvoradigital.com") &&
+          !itemDownload.includes("assets.ElvorDigital.com") &&
           !itemDownload.includes("/api/download/")
         ) {
           directFileDownload = itemDownload;
@@ -104,7 +104,7 @@ router.post("/", async (req, res) => {
           (item.googleDriveLink && item.googleDriveLink.trim()) ||
           "";
 
-        if (googleDriveLink.includes("1elvoradigital") || googleDriveLink.includes("1EXAMPLE_REAL")) {
+        if (googleDriveLink.includes("1ElvorDigital") || googleDriveLink.includes("1EXAMPLE_REAL")) {
           googleDriveLink = "";
         }
 
@@ -115,7 +115,7 @@ router.post("/", async (req, res) => {
           (item.accessFolderLink && item.accessFolderLink.trim()) ||
           "";
 
-        if (accessFolderLink.includes("cloud.elvoradigital.com")) {
+        if (accessFolderLink.includes("cloud.ElvorDigital.com")) {
           accessFolderLink = "";
         }
 

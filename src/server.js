@@ -26,7 +26,7 @@ connectDB();
 // Middleware
 const allowedOrigins = [
   "https://elvordigital-front-end.vercel.app",
-  "https://elvoradigital-front-end.vercel.app",
+  "https://ElvorDigital-front-end.vercel.app",
   "http://localhost:3000",
   process.env.CLIENT_URL,
 ].filter(Boolean);
@@ -67,7 +67,7 @@ app.use("/api/admin", analyticsRoutes);
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
-    service: "ElvoraDigital Backend API",
+    service: "ElvorDigital Backend API",
     mongodb: "Connected",
     timestamp: new Date().toISOString(),
   });
@@ -78,5 +78,5 @@ const seedDefaultData = require("./scripts/seedHelper");
 seedDefaultData();
 
 app.listen(PORT, () => {
-  console.log(`[ElvoraDigital Backend] Server listening on http://localhost:${PORT}`);
+  console.log(`[ElvorDigital Backend] Server listening on http://localhost:${PORT}`);
 });

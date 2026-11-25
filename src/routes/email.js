@@ -19,7 +19,7 @@ router.get("/config", protectAdmin, async (req, res) => {
         encryption: process.env.SMTP_SECURE === "true" ? "ssl" : "tls",
         username: process.env.SMTP_USER || "info@elvordigital.com",
         password: process.env.SMTP_PASS || "",
-        fromName: process.env.FROM_NAME || "ElvoraDigital",
+        fromName: process.env.FROM_NAME || "ElvorDigital",
         fromEmail: process.env.FROM_EMAIL || "info@elvordigital.com",
         replyToEmail: process.env.REPLY_TO || "support@elvordigital.com",
         isVerified: false,

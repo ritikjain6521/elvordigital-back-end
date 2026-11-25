@@ -26,7 +26,7 @@ router.get("/:slugOrId", async (req, res) => {
       product &&
       product.downloadFileUrl &&
       product.downloadFileUrl.trim() &&
-      !product.downloadFileUrl.includes("assets.elvoradigital.com") &&
+      !product.downloadFileUrl.includes("assets.ElvorDigital.com") &&
       !product.downloadFileUrl.includes("/api/download/")
     ) {
       downloadUrl = product.downloadFileUrl.trim();
@@ -51,7 +51,7 @@ router.get("/:slugOrId", async (req, res) => {
         digitalAsset &&
         digitalAsset.fileUrl &&
         digitalAsset.fileUrl.trim() &&
-        !digitalAsset.fileUrl.includes("assets.elvoradigital.com") &&
+        !digitalAsset.fileUrl.includes("assets.ElvorDigital.com") &&
         !digitalAsset.fileUrl.includes("/api/download/")
       ) {
         downloadUrl = digitalAsset.fileUrl.trim();
