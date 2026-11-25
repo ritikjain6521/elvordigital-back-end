@@ -105,6 +105,9 @@ router.post("/", protectAdmin, async (req, res) => {
       // Point 2: Ads & Marketing Copy
       adCopy,
 
+      // Custom Admin-Defined Product Sections & Media
+      customSections,
+
       // Point 2: Extended Sections
       curriculum,
       targetAudienceList,
@@ -171,7 +174,10 @@ router.post("/", protectAdmin, async (req, res) => {
         callToAction: "Get Instant Access",
         targetAudience: "",
         adMediaUrl: "",
+        adImages: [],
       },
+
+      customSections: Array.isArray(customSections) ? customSections : [],
 
       curriculum: curriculum || [],
       targetAudienceList: targetAudienceList || [],

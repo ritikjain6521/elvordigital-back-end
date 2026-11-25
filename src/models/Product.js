@@ -62,7 +62,11 @@ const productSchema = new mongoose.Schema(
       callToAction: { type: String, default: "Get Instant Access" },
       targetAudience: { type: String, default: "" },
       adMediaUrl: { type: String, default: "" },
+      adImages: [{ type: String }],
     },
+
+    // Custom Admin-Defined Product Sections & Media Fields
+    customSections: { type: mongoose.Schema.Types.Mixed, default: [] },
 
     // Point 2: Extended Details & Course Sections
     curriculum: { type: mongoose.Schema.Types.Mixed, default: [] },
