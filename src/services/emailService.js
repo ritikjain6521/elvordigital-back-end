@@ -1,91 +1,90 @@
 const nodemailer = require("nodemailer");
 const EmailConfig = require("../models/EmailConfig");
 
-// Universal Email Transporter / Dispatcher (Supports Google Apps Script Webhook, Resend API, & SMTP)
-const dispatchEmail = async ({ to, subject, html, fromName = "ElvoraDigital Access", fromEmail = "access@elvoradigital.com" }) => {
-  const cfg = await EmailConfig.findOne().catch(() => null);
-
-  const googleScriptUrl =
-    process.env.GOOGLE_SCRIPT_WEBHOOK_URL || (cfg && cfg.googleScriptUrl) || "";
-  const resendApiKey =
-    process.env.RESEND_API_KEY || (cfg && cfg.resendApiKey) || "";
-
-  // 1. OPTION 1: Google Apps Script Webhook (100% Free Vercel / Render Gmail delivery without port blocking)
-  if (googleScriptUrl && googleScriptUrl.trim().startsWith("http")) {
-    try {
-      console.log("[Email Service] Dispatching via Google Apps Script Webhook (Option 1)...");
-      const response = await fetch(googleScriptUrl.trim(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to,
-          subject,
-          html,
-          fromName,
-        }),
-      });
-
-      const resText = await response.text();
-      console.log("[Email Service] Google Apps Script response:", resText);
-      return { success: true, method: "google_apps_script", response: resText };
-    } catch (gErr) {
-      console.warn("[Email Service] Google Apps Script webhook failed, falling back to SMTP:", gErr.message);
-    }
-  }
-
-  // 2. OPTION 2: Resend API Key (HTTPS REST API for custom domain production delivery)
-  if (resendApiKey && resendApiKey.trim().length > 5) {
-    try {
-      console.log("[Email Service] Dispatching via Resend API (Option 2)...");
-      const resendRes = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendApiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: `${fromName} <${fromEmail}>`,
-          to: [to],
-          subject,
-          html,
-        }),
-      });
-
-      const resendData = await resendRes.json();
-      console.log("[Email Service] Resend response:", resendData);
-      return { success: true, method: "resend", data: resendData };
-    } catch (rErr) {
-      console.warn("[Email Service] Resend API failed, falling back to SMTP:", rErr.message);
-    }
-  }
-
-  // 3. OPTION 3: Direct SMTP (Gmail App Password / Custom SMTP)
+// Pure SMTP Email Dispatcher (Nodemailer)
+const dispatchEmail = async ({
+  to,
+  subject,
+  html,
+  fromName,
+  fromEmail,
+  replyTo,
+  overrideConfig = null,
+}) => {
   try {
-    const host = cfg?.host || process.env.SMTP_HOST || "smtp.gmail.com";
-    const port = cfg?.port || parseInt(process.env.SMTP_PORT) || 465;
-    const user = cfg?.username || process.env.SMTP_USER || "";
-    const pass = cfg?.password || process.env.SMTP_PASS || "";
-    const secure = cfg?.encryption === "ssl" || port === 465;
+    const cfg = overrideConfig || (await EmailConfig.findOne().catch(() => null));
+
+    const host =
+      overrideConfig?.host ||
+      process.env.SMTP_HOST ||
+      cfg?.host ||
+      "smtp.hostinger.com";
+    const port =
+      Number(overrideConfig?.port) ||
+      parseInt(process.env.SMTP_PORT, 10) ||
+      Number(cfg?.port) ||
+      465;
+    const user =
+      overrideConfig?.username ||
+      process.env.SMTP_USER ||
+      cfg?.username ||
+      "";
+    const pass =
+      overrideConfig?.password ||
+      process.env.SMTP_PASS ||
+      cfg?.password ||
+      "";
+
+    const secure =
+      overrideConfig?.encryption
+        ? overrideConfig.encryption === "ssl" || port === 465
+        : process.env.SMTP_SECURE !== undefined
+        ? process.env.SMTP_SECURE === "true"
+        : cfg?.encryption === "ssl" || port === 465;
+
+    const resolvedFromName =
+      fromName ||
+      overrideConfig?.fromName ||
+      process.env.FROM_NAME ||
+      cfg?.fromName ||
+      "ElvoraDigital";
+
+    const resolvedFromEmail =
+      fromEmail ||
+      overrideConfig?.fromEmail ||
+      process.env.FROM_EMAIL ||
+      cfg?.fromEmail ||
+      user ||
+      "info@elvordigital.com";
+
+    const resolvedReplyTo =
+      replyTo ||
+      overrideConfig?.replyToEmail ||
+      process.env.REPLY_TO ||
+      cfg?.replyToEmail ||
+      "support@elvordigital.com";
+
+    if (!user || !pass) {
+      throw new Error("SMTP_USER or SMTP_PASS is missing. Configure SMTP credentials first.");
+    }
 
     const transporter = nodemailer.createTransport({
       host,
       port,
       secure,
-      auth: user && pass ? { user, pass } : undefined,
+      auth: { user, pass },
       tls: { rejectUnauthorized: false },
     });
 
-    const replyTo = process.env.REPLY_TO || cfg?.replyTo || "support@elvordigital.com";
-
     const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      replyTo,
+      from: `"${resolvedFromName}" <${resolvedFromEmail}>`,
+      replyTo: resolvedReplyTo,
       to,
       subject,
       html,
     });
 
-    console.log("[Email Service] Dispatched via SMTP. Message ID:", info.messageId);
+    console.log(`[Email Service] Dispatched via SMTP (${host}:${port}). Message ID:`, info.messageId);
     return { success: true, method: "smtp", messageId: info.messageId, response: info.response };
   } catch (smtpErr) {
     console.error("[Email Service] SMTP dispatch failed:", smtpErr.message);
@@ -96,43 +95,53 @@ const dispatchEmail = async ({ to, subject, html, fromName = "ElvoraDigital Acce
 // Send real-time test diagnostic email
 const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
   const cfg = testConfig || (await EmailConfig.findOne().catch(() => null));
-  const fromName = cfg?.fromName || process.env.FROM_NAME || "ElvoraDigital Access";
-  const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "info@elvordigital.com";
+  const fromName = testConfig?.fromName || process.env.FROM_NAME || cfg?.fromName || "ElvoraDigital";
+  const fromEmail =
+    testConfig?.fromEmail ||
+    process.env.FROM_EMAIL ||
+    cfg?.fromEmail ||
+    "info@elvordigital.com";
 
   const html = `
     <div style="font-family: Arial, sans-serif; background-color: #090816; color: #ffffff; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #252249;">
-      <h2 style="color: #8B5CF6; margin-top: 0;">⚡ ElvoraDigital Production Email Verified</h2>
-      <p style="color: #A7A3BC; font-size: 14px;">Your ElvoraDigital marketplace email configuration is transmitting live messages successfully.</p>
+      <h2 style="color: #8B5CF6; margin-top: 0;">⚡ ElvoraDigital SMTP Email Verified</h2>
+      <p style="color: #A7A3BC; font-size: 14px;">Your ElvoraDigital marketplace SMTP email configuration is transmitting live messages successfully.</p>
       <div style="background-color: #17152E; padding: 15px; border-radius: 8px; border: 1px solid #322f5a; margin: 20px 0;">
         <p style="margin: 4px 0; font-size: 13px; color: #22D3EE;"><strong>Sender:</strong> ${fromName} &lt;${fromEmail}&gt;</p>
         <p style="margin: 4px 0; font-size: 13px; color: #A7A3BC;"><strong>Recipient:</strong> ${toEmail}</p>
         <p style="margin: 4px 0; font-size: 13px; color: #A7A3BC;"><strong>Dispatched At:</strong> ${new Date().toISOString()}</p>
       </div>
-      <p style="color: #8B5CF6; font-size: 12px;">© 2026 ElvoraDigital Marketplace Inc. • Automated Email Delivery</p>
+      <p style="color: #8B5CF6; font-size: 12px;">© 2026 ElvoraDigital Marketplace Inc. • Automated SMTP Delivery</p>
     </div>
   `;
 
   return await dispatchEmail({
     to: toEmail,
-    subject: "⚡ ElvoraDigital Production Email Connection Verified",
+    subject: "⚡ ElvoraDigital SMTP Email Connection Verified",
     html,
     fromName,
     fromEmail,
+    overrideConfig: testConfig,
   });
 };
 
-// Send instant product access email with Google Drive link and downloads upon verified payment
+// Send instant product access email with Digital Asset Vault & Delivery Files upon verified payment
 const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber, items, totalAmount }) => {
   try {
     const cfg = await EmailConfig.findOne().catch(() => null);
-    const fromName = cfg?.fromName || process.env.FROM_NAME || "ElvoraDigital Digital Access";
-    const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "info@elvordigital.com";
-    const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    const fromName = process.env.FROM_NAME || cfg?.fromName || "ElvoraDigital";
+    const fromEmail = process.env.FROM_EMAIL || cfg?.fromEmail || "info@elvordigital.com";
+    const clientUrl = process.env.CLIENT_URL || "https://elvordigital-front-end.vercel.app";
 
     const itemsHtml = (items || [])
       .map((item) => {
         const driveUrl = item.googleDriveLink && item.googleDriveLink.trim() ? item.googleDriveLink.trim() : "";
-        const folderUrl = item.accessFolderLink && item.accessFolderLink.trim() ? item.accessFolderLink.trim() : "";
+        const rawFolderUrl = item.accessFolderLink && item.accessFolderLink.trim() ? item.accessFolderLink.trim() : "";
+        const folderUrl = rawFolderUrl
+          ? rawFolderUrl.startsWith("/")
+            ? `${clientUrl}${rawFolderUrl}`
+            : rawFolderUrl
+          : "";
         const downloadUrl = item.downloadFileUrl && item.downloadFileUrl.trim() ? item.downloadFileUrl.trim() : "";
         const videoUrl = item.videoLink && item.videoLink.trim() ? item.videoLink.trim() : "";
 
@@ -199,7 +208,7 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
 
         <p style="color: #e2e8f0; font-size: 15px;">Hello <strong>${customerName}</strong>,</p>
         <p style="color: #A7A3BC; font-size: 14px; line-height: 1.6;">
-          Your purchase has been verified and processed successfully. Your instant Google Drive folders, cloud vault portals, and master download deliverables are ready below:
+          Your purchase has been verified and processed successfully. Your instant digital asset access and delivery links are ready below:
         </p>
 
         <div style="margin: 24px 0;">
@@ -214,7 +223,7 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
         </div>
 
         <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 30px;">
-          Need assistance? Contact our VIP Help Desk at <a href="mailto:support@elvoradigital.com" style="color: #8B5CF6;">support@elvoradigital.com</a><br/>
+          Need assistance? Contact our VIP Help Desk at <a href="mailto:support@elvordigital.com" style="color: #8B5CF6;">support@elvordigital.com</a><br/>
           © 2026 ElvoraDigital Marketplace Inc.
         </p>
       </div>

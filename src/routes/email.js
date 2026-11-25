@@ -14,14 +14,14 @@ router.get("/config", protectAdmin, async (req, res) => {
     if (!config) {
       config = await EmailConfig.create({
         provider: "smtp",
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        encryption: "tls",
-        username: process.env.SMTP_USER || "access@elvoradigital.com",
+        host: process.env.SMTP_HOST || "smtp.hostinger.com",
+        port: parseInt(process.env.SMTP_PORT) || 465,
+        encryption: process.env.SMTP_SECURE === "false" ? "tls" : "ssl",
+        username: process.env.SMTP_USER || "info@elvordigital.com",
         password: process.env.SMTP_PASS || "",
-        fromName: process.env.FROM_NAME || "ElvoraDigital Access",
-        fromEmail: process.env.FROM_EMAIL || "access@elvoradigital.com",
-        replyToEmail: process.env.REPLY_TO || "support@elvoradigital.com",
+        fromName: process.env.FROM_NAME || "ElvoraDigital",
+        fromEmail: process.env.FROM_EMAIL || "info@elvordigital.com",
+        replyToEmail: process.env.REPLY_TO || "support@elvordigital.com",
         isVerified: false,
       });
     }
@@ -66,6 +66,13 @@ router.post("/test", protectAdmin, async (req, res) => {
     }
 
     const info = await sendDiagnosticEmail(toEmail, testConfig);
+
+    if (!info || !info.success) {
+      return res.status(500).json({
+        success: false,
+        message: `SMTP Verification failed: ${info?.error || "Unknown SMTP error"}`,
+      });
+    }
 
     // Update isVerified flag
     await EmailConfig.findOneAndUpdate({}, { isVerified: true });
