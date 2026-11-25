@@ -301,14 +301,19 @@ router.post("/verify", async (req, res) => {
         }
       }
 
-      // Dispatch live email with exact links configured in Digital Asset Vault
-      const emailResult = await sendProductAccessEmail({
-        customerEmail: order.customerEmail,
-        customerName: order.customerName,
-        orderNumber: order.orderNumber,
-        items: order.items,
-        totalAmount: order.totalAmount,
-      });
+      // Dispatch live email with exact links configured in Digital Asset Vault (with 8s safety timeout)
+      const emailResult = await Promise.race([
+        sendProductAccessEmail({
+          customerEmail: order.customerEmail,
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          items: order.items,
+          totalAmount: order.totalAmount,
+        }),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ success: false, error: "Email dispatch timed out (handled by frontend relay)" }), 8000)
+        ),
+      ]);
 
       if (emailResult.success) {
         order.emailSent = true;
