@@ -98,20 +98,38 @@ router.post("/create-order", async (req, res) => {
 
         const itemSlug = prod?.slug || (item.productId || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-        // Direct Download URL from uploaded file
+        // Direct Download URL strictly from Product Delivery Files or Digital Asset Vault
         let directFileDownload = "";
-        if (digitalAsset && digitalAsset.fileUrl && digitalAsset.fileUrl.trim()) {
-          directFileDownload = digitalAsset.fileUrl.trim().startsWith("http")
-            ? digitalAsset.fileUrl.trim()
-            : `${process.env.CLIENT_URL ? "" : "http://localhost:5000"}${digitalAsset.fileUrl.trim()}`;
-        } else if (prod && prod.downloadFileUrl && prod.downloadFileUrl.trim() && !prod.downloadFileUrl.includes("assets.elvoradigital.com") && !prod.downloadFileUrl.includes("/api/download/")) {
-          directFileDownload = prod.downloadFileUrl.trim();
+        const prodDownload = prod?.downloadFileUrl?.trim() || "";
+        const assetDownload = digitalAsset?.fileUrl?.trim() || "";
+        const itemDownload = item?.downloadFileUrl?.trim() || "";
+
+        if (
+          prodDownload &&
+          !prodDownload.includes("assets.elvoradigital.com") &&
+          !prodDownload.includes("/api/download/")
+        ) {
+          directFileDownload = prodDownload;
+        } else if (
+          assetDownload &&
+          !assetDownload.includes("assets.elvoradigital.com") &&
+          !assetDownload.includes("/api/download/")
+        ) {
+          directFileDownload = assetDownload.startsWith("http")
+            ? assetDownload
+            : `${process.env.CLIENT_URL ? "" : "http://localhost:5000"}${assetDownload}`;
+        } else if (
+          itemDownload &&
+          !itemDownload.includes("assets.elvoradigital.com") &&
+          !itemDownload.includes("/api/download/")
+        ) {
+          directFileDownload = itemDownload;
         }
 
-        // Exact Google Drive Link (Filter out fake placeholder templates)
+        // Exact Google Drive Link (strictly from Product or Digital Asset Vault)
         let googleDriveLink =
-          (digitalAsset && digitalAsset.googleDriveLink && digitalAsset.googleDriveLink.trim()) ||
           (prod && prod.googleDriveLink && prod.googleDriveLink.trim()) ||
+          (digitalAsset && digitalAsset.googleDriveLink && digitalAsset.googleDriveLink.trim()) ||
           (item.googleDriveLink && item.googleDriveLink.trim()) ||
           "";
 
@@ -119,10 +137,10 @@ router.post("/create-order", async (req, res) => {
           googleDriveLink = "";
         }
 
-        // Exact Cloud Resource Folder Link (Filter out non-existent cloud.elvoradigital.com)
+        // Exact Cloud Resource Folder Link (strictly from Product or Digital Asset Vault)
         let accessFolderLink =
-          (digitalAsset && digitalAsset.accessFolderLink && digitalAsset.accessFolderLink.trim()) ||
           (prod && prod.accessFolderLink && prod.accessFolderLink.trim()) ||
+          (digitalAsset && digitalAsset.accessFolderLink && digitalAsset.accessFolderLink.trim()) ||
           (item.accessFolderLink && item.accessFolderLink.trim()) ||
           "";
 
@@ -130,15 +148,11 @@ router.post("/create-order", async (req, res) => {
           accessFolderLink = "";
         }
 
-        // If no external cloud folder provided, route to in-app Cloud Resource Vault portal
-        if (!accessFolderLink && itemSlug) {
-          accessFolderLink = `/vault/${itemSlug}`;
-        }
-
-        // Exact Video Lesson Link
+        // Exact Video Lesson Link (strictly from Product or Digital Asset Vault)
         const videoLink =
-          (digitalAsset && digitalAsset.videoLink && digitalAsset.videoLink.trim()) ||
           (prod && prod.videoLink && prod.videoLink.trim()) ||
+          (digitalAsset && digitalAsset.videoLink && digitalAsset.videoLink.trim()) ||
+          (item.videoLink && item.videoLink.trim()) ||
           "";
 
         return {

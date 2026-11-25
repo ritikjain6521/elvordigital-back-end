@@ -75,8 +75,11 @@ const dispatchEmail = async ({ to, subject, html, fromName = "ElvoraDigital Acce
       tls: { rejectUnauthorized: false },
     });
 
+    const replyTo = process.env.REPLY_TO || cfg?.replyTo || "support@elvordigital.com";
+
     const info = await transporter.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
+      replyTo,
       to,
       subject,
       html,
@@ -94,7 +97,7 @@ const dispatchEmail = async ({ to, subject, html, fromName = "ElvoraDigital Acce
 const sendDiagnosticEmail = async (toEmail, testConfig = null) => {
   const cfg = testConfig || (await EmailConfig.findOne().catch(() => null));
   const fromName = cfg?.fromName || process.env.FROM_NAME || "ElvoraDigital Access";
-  const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "ritikjain6224@gmail.com";
+  const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "info@elvordigital.com";
 
   const html = `
     <div style="font-family: Arial, sans-serif; background-color: #090816; color: #ffffff; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; border: 1px solid #252249;">
@@ -123,7 +126,7 @@ const sendProductAccessEmail = async ({ customerEmail, customerName, orderNumber
   try {
     const cfg = await EmailConfig.findOne().catch(() => null);
     const fromName = cfg?.fromName || process.env.FROM_NAME || "ElvoraDigital Digital Access";
-    const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "ritikjain6224@gmail.com";
+    const fromEmail = cfg?.fromEmail || process.env.FROM_EMAIL || "info@elvordigital.com";
     const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
 
     const itemsHtml = (items || [])
