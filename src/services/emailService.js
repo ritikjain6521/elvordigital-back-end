@@ -83,6 +83,9 @@ const dispatchEmail = async ({
       secure,
       auth: { user, pass },
       tls: { rejectUnauthorized: false },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     });
 
     const info = await transporter.sendMail({
