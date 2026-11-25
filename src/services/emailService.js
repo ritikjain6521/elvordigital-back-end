@@ -1,3 +1,4 @@
+const https = require("https");
 const nodemailer = require("nodemailer");
 const EmailConfig = require("../models/EmailConfig");
 
@@ -77,7 +78,50 @@ const dispatchEmail = async ({
       throw new Error("SMTP_USER or SMTP_PASS is missing. Configure SMTP credentials first.");
     }
 
-    const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
+    const isRender = Boolean(
+      process.env.RENDER ||
+      process.env.RENDER_SERVICE_ID ||
+      process.env.NODE_ENV === "production"
+    );
+
+    const postJsonHttps = (urlStr, payload, timeoutMs = 15000) => {
+      return new Promise((resolve, reject) => {
+        const parsed = new URL(urlStr);
+        const data = JSON.stringify(payload);
+        const req = https.request(
+          {
+            hostname: parsed.hostname,
+            port: parsed.port || 443,
+            path: parsed.pathname + parsed.search,
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Length": Buffer.byteLength(data),
+            },
+            timeout: timeoutMs,
+          },
+          (res) => {
+            let body = "";
+            res.on("data", (chunk) => (body += chunk));
+            res.on("end", () => {
+              try {
+                const json = JSON.parse(body);
+                resolve({ status: res.statusCode, data: json });
+              } catch {
+                reject(new Error(`Invalid JSON from relay (HTTP ${res.statusCode}): ${body.slice(0, 200)}`));
+              }
+            });
+          }
+        );
+        req.on("timeout", () => {
+          req.destroy();
+          reject(new Error(`HTTPS relay request timed out after ${timeoutMs}ms`));
+        });
+        req.on("error", (err) => reject(err));
+        req.write(data);
+        req.end();
+      });
+    };
 
     const sendViaVercelRelay = async () => {
       const relayUrl =
@@ -86,10 +130,9 @@ const dispatchEmail = async ({
       const relaySecret =
         process.env.EMAIL_RELAY_SECRET || "elvordigital_smtp_relay_2026";
 
-      const relayRes = await fetch(relayUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { status, data: relayData } = await postJsonHttps(
+        relayUrl,
+        {
           secret: relaySecret,
           to,
           subject,
@@ -98,13 +141,12 @@ const dispatchEmail = async ({
           fromEmail: resolvedFromEmail,
           replyTo: resolvedReplyTo,
           smtpConfig: { host, port, user, pass },
-        }),
-        signal: AbortSignal.timeout(20000),
-      });
+        },
+        18000
+      );
 
-      const relayData = await relayRes.json();
-      if (!relayRes.ok || !relayData.success) {
-        throw new Error(relayData?.error || `SMTP relay HTTP ${relayRes.status}`);
+      if (status >= 400 || !relayData.success) {
+        throw new Error(relayData?.error || `SMTP relay HTTP ${status}`);
       }
 
       console.log(`[Email Service] Dispatched via Vercel SMTP relay. Message ID:`, relayData.messageId);
