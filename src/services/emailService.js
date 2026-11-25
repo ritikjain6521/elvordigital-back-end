@@ -29,8 +29,8 @@ const dispatchEmail = async ({
     // Port 587 is standard STARTTLS for cloud environments (Render blocks 465)
     const port =
       Number(overrideConfig?.port) ||
-      parseInt(process.env.SMTP_PORT, 10) ||
       Number(cfg?.port) ||
+      parseInt(process.env.SMTP_PORT, 10) ||
       587;
 
     const user =
@@ -77,29 +77,67 @@ const dispatchEmail = async ({
       throw new Error("SMTP_USER or SMTP_PASS is missing. Configure SMTP credentials first.");
     }
 
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 10000,
-    });
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 6000,
+      });
 
-    const info = await transporter.sendMail({
-      from: `"${resolvedFromName}" <${resolvedFromEmail}>`,
-      replyTo: resolvedReplyTo,
-      to,
-      subject,
-      html,
-    });
+      const info = await transporter.sendMail({
+        from: `"${resolvedFromName}" <${resolvedFromEmail}>`,
+        replyTo: resolvedReplyTo,
+        to,
+        subject,
+        html,
+      });
 
-    console.log(`[Email Service] Dispatched via SMTP (${host}:${port}). Message ID:`, info.messageId);
-    return { success: true, method: "smtp", messageId: info.messageId, response: info.response };
+      console.log(`[Email Service] Dispatched via direct SMTP (${host}:${port}). Message ID:`, info.messageId);
+      return { success: true, method: "smtp", messageId: info.messageId, response: info.response };
+    } catch (directSmtpErr) {
+      console.warn(`[Email Service] Direct SMTP (${host}:${port}) failed (${directSmtpErr.message}), attempting HTTPS->SMTP relay via Vercel...`);
+      const relayUrl =
+        process.env.EMAIL_RELAY_URL ||
+        "https://elvordigital.com/api/send-email";
+      const relaySecret =
+        process.env.EMAIL_RELAY_SECRET || "elvordigital_smtp_relay_2026";
+
+      const relayRes = await fetch(relayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: relaySecret,
+          to,
+          subject,
+          html,
+          fromName: resolvedFromName,
+          fromEmail: resolvedFromEmail,
+          replyTo: resolvedReplyTo,
+          smtpConfig: { host, port, user, pass },
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+
+      const relayData = await relayRes.json();
+      if (!relayRes.ok || !relayData.success) {
+        throw new Error(relayData?.error || `SMTP relay HTTP ${relayRes.status}`);
+      }
+
+      console.log(`[Email Service] Dispatched via Vercel SMTP relay. Message ID:`, relayData.messageId);
+      return {
+        success: true,
+        method: relayData.method || "vercel-smtp-relay",
+        messageId: relayData.messageId,
+        response: relayData.response,
+      };
+    }
   } catch (smtpErr) {
-    console.error("[Email Service] SMTP dispatch failed:", smtpErr.message);
+    console.error("[Email Service] All SMTP dispatch methods failed:", smtpErr.message);
     return { success: false, error: smtpErr.message };
   }
 };
