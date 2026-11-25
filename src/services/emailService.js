@@ -77,30 +77,9 @@ const dispatchEmail = async ({
       throw new Error("SMTP_USER or SMTP_PASS is missing. Configure SMTP credentials first.");
     }
 
-    try {
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-        connectionTimeout: 4000,
-        greetingTimeout: 4000,
-        socketTimeout: 6000,
-      });
+    const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
 
-      const info = await transporter.sendMail({
-        from: `"${resolvedFromName}" <${resolvedFromEmail}>`,
-        replyTo: resolvedReplyTo,
-        to,
-        subject,
-        html,
-      });
-
-      console.log(`[Email Service] Dispatched via direct SMTP (${host}:${port}). Message ID:`, info.messageId);
-      return { success: true, method: "smtp", messageId: info.messageId, response: info.response };
-    } catch (directSmtpErr) {
-      console.warn(`[Email Service] Direct SMTP (${host}:${port}) failed (${directSmtpErr.message}), attempting HTTPS->SMTP relay via Vercel...`);
+    const sendViaVercelRelay = async () => {
       const relayUrl =
         process.env.EMAIL_RELAY_URL ||
         "https://elvordigital.com/api/send-email";
@@ -135,6 +114,37 @@ const dispatchEmail = async ({
         messageId: relayData.messageId,
         response: relayData.response,
       };
+    };
+
+    if (isRender) {
+      return await sendViaVercelRelay();
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 6000,
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${resolvedFromName}" <${resolvedFromEmail}>`,
+        replyTo: resolvedReplyTo,
+        to,
+        subject,
+        html,
+      });
+
+      console.log(`[Email Service] Dispatched via direct SMTP (${host}:${port}). Message ID:`, info.messageId);
+      return { success: true, method: "smtp", messageId: info.messageId, response: info.response };
+    } catch (directSmtpErr) {
+      console.warn(`[Email Service] Direct SMTP (${host}:${port}) failed (${directSmtpErr.message}), attempting HTTPS->SMTP relay via Vercel...`);
+      return await sendViaVercelRelay();
     }
   } catch (smtpErr) {
     console.error("[Email Service] All SMTP dispatch methods failed:", smtpErr.message);

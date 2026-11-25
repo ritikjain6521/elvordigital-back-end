@@ -68,6 +68,7 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
     service: "ElvorDigital Backend API",
+    version: "2.2-vercel-relay",
     mongodb: "Connected",
     timestamp: new Date().toISOString(),
   });
