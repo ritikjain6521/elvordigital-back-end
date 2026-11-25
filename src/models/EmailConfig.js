@@ -4,8 +4,8 @@ const emailConfigSchema = new mongoose.Schema(
   {
     provider: { type: String, default: "smtp" },
     host: { type: String, default: "smtp.hostinger.com" },
-    port: { type: Number, default: 465 },
-    encryption: { type: String, enum: ["tls", "ssl", "none"], default: "ssl" },
+    port: { type: Number, default: 587 },
+    encryption: { type: String, enum: ["tls", "ssl", "none"], default: "tls" },
     username: { type: String, default: "" },
     password: { type: String, default: "" },
     fromName: { type: String, default: "ElvoraDigital" },

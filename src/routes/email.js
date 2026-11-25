@@ -15,8 +15,8 @@ router.get("/config", protectAdmin, async (req, res) => {
       config = await EmailConfig.create({
         provider: "smtp",
         host: process.env.SMTP_HOST || "smtp.hostinger.com",
-        port: parseInt(process.env.SMTP_PORT) || 465,
-        encryption: process.env.SMTP_SECURE === "false" ? "tls" : "ssl",
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        encryption: process.env.SMTP_SECURE === "true" ? "ssl" : "tls",
         username: process.env.SMTP_USER || "info@elvordigital.com",
         password: process.env.SMTP_PASS || "",
         fromName: process.env.FROM_NAME || "ElvoraDigital",
