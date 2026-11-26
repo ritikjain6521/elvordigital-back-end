@@ -1,4 +1,12 @@
+const dns = require("dns");
 const mongoose = require("mongoose");
+
+// Ensure SRV lookups succeed on networks/Windows DNS where local resolver refuses querySrv
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+} catch {
+  // Ignore if not supported
+}
 
 const connectDB = async () => {
   try {
