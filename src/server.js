@@ -15,6 +15,7 @@ const assetRoutes = require("./routes/assets");
 const downloadRoutes = require("./routes/download");
 const paymentRoutes = require("./routes/payment");
 const analyticsRoutes = require("./routes/analytics");
+const landingPageRoutes = require("./routes/landingPages");
 
 // Initialize App
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api/assets", assetRoutes);
 app.use("/api/download", downloadRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/admin", analyticsRoutes);
+app.use("/api/landing-pages", landingPageRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

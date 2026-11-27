@@ -93,6 +93,7 @@ router.post("/", protectAdmin, async (req, res) => {
       accessFolderLink,
       videoLink,
       downloadFileUrl,
+      superProfileUrl,
 
       // Point 6: Product Details Sections
       deliverables,
@@ -159,6 +160,7 @@ router.post("/", protectAdmin, async (req, res) => {
       accessFolderLink: accessFolderLink || "",
       videoLink: videoLink || "",
       downloadFileUrl: downloadFileUrl || "",
+      superProfileUrl: superProfileUrl || "",
 
       deliverables: deliverables || [],
       overviewText: overviewText || "",
@@ -221,7 +223,13 @@ router.put("/:id", protectAdmin, async (req, res) => {
 router.delete("/:id", protectAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Product.findByIdAndDelete(id);
+    let deleted = null;
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      deleted = await Product.findByIdAndDelete(id);
+    }
+    if (!deleted) {
+      deleted = await Product.findOneAndDelete({ slug: id.toLowerCase() });
+    }
 
     if (!deleted) {
       return res.status(404).json({ success: false, message: "Product not found." });

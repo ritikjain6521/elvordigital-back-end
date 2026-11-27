@@ -35,6 +35,7 @@ const productSchema = new mongoose.Schema(
     accessFolderLink: { type: String, default: "" },
     videoLink: { type: String, default: "" },
     downloadFileUrl: { type: String, default: "" },
+    superProfileUrl: { type: String, default: "" },
 
     // Point 6: Product Details Page Sections Managed by Admin
     // 1. Overview & Deliverables
