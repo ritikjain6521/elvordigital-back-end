@@ -90,4 +90,20 @@ router.put("/:id/revoke", protectAdmin, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/access/:id
+// @desc    Delete access record
+// @access  Private (Admin)
+router.delete("/:id", protectAdmin, async (req, res) => {
+  try {
+    const deleted = await AccessRecord.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Access record not found." });
+    }
+    return res.json({ success: true, message: "Access record deleted successfully." });
+  } catch (error) {
+    console.error("[Access] Delete error:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete access record." });
+  }
+});
+
 module.exports = router;

@@ -117,4 +117,21 @@ router.get("/customers", async (req, res) => {
   }
 });
 
+// @route   DELETE /api/admin/customers/:email
+// @desc    Delete customer's orders and access records
+router.delete("/customers/:email", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase().trim();
+    const orderRes = await Order.deleteMany({ customerEmail: email });
+    const accessRes = await AccessRecord.deleteMany({ customerEmail: email });
+    return res.json({
+      success: true,
+      message: `Deleted ${orderRes.deletedCount} order(s) and ${accessRes.deletedCount} access record(s) for ${email}.`,
+    });
+  } catch (error) {
+    console.error("[Customers] Delete error:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete customer records." });
+  }
+});
+
 module.exports = router;

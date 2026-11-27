@@ -228,51 +228,79 @@ router.post("/superprofile-init", async (req, res) => {
   }
 });
 
-// @route   POST /api/payment/superprofile-confirm
-// @desc    Confirm SuperProfile payment, grant access in MongoDB, and send delivery email
-router.post("/superprofile-confirm", async (req, res) => {
+// @route   GET /api/payment/superprofile-status/:orderNumber
+// @desc    Verify if a SuperProfile order has actually been paid (only returns links if paid)
+router.get("/superprofile-status/:orderNumber", async (req, res) => {
   try {
-    const { orderNumber, transactionId } = req.body;
+    const orderNumber = (req.params.orderNumber || "").trim();
+    const order = await Order.findOne({ orderNumber });
+    if (!order) {
+      return res.status(404).json({ success: false, verified: false, message: "Order not found." });
+    }
 
+    const isPaid = order.paymentStatus === "paid";
+    return res.json({
+      success: true,
+      verified: isPaid,
+      paymentStatus: order.paymentStatus,
+      accessStatus: order.accessStatus,
+      orderNumber: order.orderNumber,
+      order: isPaid ? order : null,
+      redirectUrl: isPaid ? `/order-success/${order.orderNumber}` : null,
+    });
+  } catch (error) {
+    console.error("[SuperProfile] Status check error:", error);
+    return res.status(500).json({ success: false, verified: false, message: "Failed to check payment status." });
+  }
+});
+
+// @route   POST /api/payment/superprofile-cancel
+// @desc    Mark a pending order as cancelled/failed when customer cancels payment (no access, no email)
+router.post("/superprofile-cancel", async (req, res) => {
+  try {
+    const { orderNumber } = req.body;
     if (!orderNumber) {
       return res.status(400).json({ success: false, message: "Order number is required." });
     }
-
-    const order = await Order.findOne({ orderNumber: orderNumber.trim() });
+    const order = await Order.findOne({ orderNumber: String(orderNumber).trim() });
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found." });
     }
-
-    if (transactionId) {
-      order.razorpayPaymentId = transactionId.trim();
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "failed";
+      order.accessStatus = "pending";
+      await order.save();
     }
-
-    const { emailDispatched } = await grantOrderAccessAndSendEmail(order);
-
     return res.json({
       success: true,
-      message: "SuperProfile payment confirmed! Access granted.",
-      orderNumber: order.orderNumber,
-      emailDispatched,
-      order,
-      redirectUrl: `/order-success/${order.orderNumber}`,
+      message: "Payment cancelled. No access granted and no email sent.",
+      paymentStatus: order.paymentStatus,
     });
   } catch (error) {
-    console.error("[SuperProfile] Confirm error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to confirm SuperProfile payment.",
-    });
+    console.error("[SuperProfile] Cancel error:", error);
+    return res.status(500).json({ success: false, message: "Failed to cancel order." });
   }
 });
 
 // @route   POST /api/payment/superprofile-webhook
-// @desc    Optional webhook for SuperProfile to auto-confirm pending orders by email
+// @desc    Webhook for SuperProfile to verify payment and grant access + send email
 router.post("/superprofile-webhook", async (req, res) => {
   try {
+    const webhookSecret = process.env.SUPERPROFILE_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const incomingSecret =
+        req.headers["x-superprofile-secret"] ||
+        req.headers["x-webhook-secret"] ||
+        req.query.secret;
+      if (incomingSecret !== webhookSecret) {
+        return res.status(401).json({ success: false, message: "Invalid webhook secret." });
+      }
+    }
+
     const payload = req.body || {};
     const email = (payload.email || payload.customerEmail || payload.buyer_email || "").toLowerCase().trim();
     const orderNumber = payload.orderNumber || payload.referenceId || "";
+    const rawStatus = String(payload.status || payload.payment_status || payload.event || "").toLowerCase();
 
     let order = null;
     if (orderNumber) {
@@ -286,8 +314,34 @@ router.post("/superprofile-webhook", async (req, res) => {
       return res.status(200).json({ success: true, message: "Webhook received (no matching pending order)." });
     }
 
-    await grantOrderAccessAndSendEmail(order);
-    return res.json({ success: true, message: "Order confirmed via SuperProfile webhook.", orderNumber: order.orderNumber });
+    // If SuperProfile reports payment failed or cancelled, do NOT grant access or send email
+    if (
+      rawStatus.includes("fail") ||
+      rawStatus.includes("cancel") ||
+      rawStatus.includes("expired") ||
+      rawStatus.includes("refund")
+    ) {
+      if (order.paymentStatus !== "paid") {
+        order.paymentStatus = "failed";
+        order.accessStatus = "pending";
+        await order.save();
+      }
+      return res.json({ success: true, message: "Payment failed/cancelled recorded. Access not granted." });
+    }
+
+    // Only grant access when payment is verified as paid/captured/success
+    if (
+      rawStatus === "" ||
+      rawStatus.includes("paid") ||
+      rawStatus.includes("captur") ||
+      rawStatus.includes("success") ||
+      rawStatus.includes("complet")
+    ) {
+      await grantOrderAccessAndSendEmail(order);
+      return res.json({ success: true, message: "Payment verified via SuperProfile webhook. Access granted & email sent.", orderNumber: order.orderNumber });
+    }
+
+    return res.json({ success: true, message: `Webhook status "${rawStatus}" noted; waiting for paid confirmation.` });
   } catch (error) {
     console.error("[SuperProfile] Webhook error:", error);
     return res.status(500).json({ success: false, message: error.message });

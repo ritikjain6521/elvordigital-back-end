@@ -336,4 +336,28 @@ router.put("/:id/status", protectAdmin, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/orders/:id
+// @desc    Delete order and its associated access records
+// @access  Private (Admin)
+router.delete("/:id", protectAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let deleted = null;
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      deleted = await Order.findByIdAndDelete(id);
+    }
+    if (!deleted) {
+      deleted = await Order.findOneAndDelete({ orderNumber: id.toUpperCase() });
+    }
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Order not found." });
+    }
+    await AccessRecord.deleteMany({ orderId: deleted.orderNumber });
+    return res.json({ success: true, message: "Order deleted successfully." });
+  } catch (error) {
+    console.error("[Orders] Delete error:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete order." });
+  }
+});
+
 module.exports = router;
