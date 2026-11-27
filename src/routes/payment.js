@@ -159,24 +159,28 @@ async function grantOrderAccessAndSendEmail(order) {
 
   let emailDispatched = Boolean(order.emailSent);
   if (!order.emailSent && order.customerEmail) {
-    const emailResult = await Promise.race([
-      sendProductAccessEmail({
-        customerEmail: order.customerEmail,
-        customerName: order.customerName,
-        orderNumber: order.orderNumber,
-        items: order.items,
-        totalAmount: order.totalAmount,
-      }),
-      new Promise((resolve) =>
-        setTimeout(() => resolve({ success: false, error: "Email dispatch timed out" }), 8000)
-      ),
-    ]);
+    try {
+      const emailResult = await Promise.race([
+        sendProductAccessEmail({
+          customerEmail: order.customerEmail,
+          customerName: order.customerName,
+          orderNumber: order.orderNumber,
+          items: order.items,
+          totalAmount: order.totalAmount,
+        }),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ success: false, error: "Email dispatch timed out" }), 8000)
+        ),
+      ]);
 
-    if (emailResult.success) {
-      order.emailSent = true;
-      order.emailSentAt = new Date();
-      await order.save();
-      emailDispatched = true;
+      if (emailResult && emailResult.success) {
+        order.emailSent = true;
+        order.emailSentAt = new Date();
+        await order.save();
+        emailDispatched = true;
+      }
+    } catch (emailErr) {
+      console.warn("[Payment] Email dispatch warning:", emailErr.message);
     }
   }
 
@@ -193,7 +197,7 @@ router.post("/superprofile-init", async (req, res) => {
       return res.status(400).json({ success: false, message: "Customer email is required for digital delivery." });
     }
 
-    const orderNumber = `ELV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderNumber = `ELV-${Date.now().toString(36).toUpperCase().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
     const { enrichedItems, primarySuperProfileUrl } = await enrichOrderItems(items);
 
     const newOrder = new Order({

@@ -298,7 +298,13 @@ router.put("/:id/status", protectAdmin, async (req, res) => {
     const { id } = req.params;
     const { paymentStatus } = req.body;
 
-    const order = await Order.findById(id);
+    let order = null;
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      order = await Order.findById(id);
+    }
+    if (!order) {
+      order = await Order.findOne({ orderNumber: String(id).toUpperCase() });
+    }
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found." });
     }
@@ -306,52 +312,66 @@ router.put("/:id/status", protectAdmin, async (req, res) => {
     order.paymentStatus = paymentStatus;
     if (paymentStatus === "paid" && order.accessStatus !== "granted") {
       order.accessStatus = "granted";
+      await order.save();
+
       // Ensure full access records exist
       for (const item of order.items) {
-        await AccessRecord.findOneAndUpdate(
-          { orderId: order.orderNumber, productId: item.productId },
-          {
-            $set: {
+        try {
+          await AccessRecord.findOneAndUpdate(
+            { orderId: order.orderNumber, productId: item.productId },
+            {
+              $set: {
+                customerEmail: order.customerEmail,
+                customerName: order.customerName,
+                productId: item.productId,
+                productName: item.productName,
+                orderId: order.orderNumber,
+                googleDriveLink: item.googleDriveLink || "",
+                accessFolderLink: item.accessFolderLink || "",
+                downloadFileUrl: item.downloadFileUrl || "",
+                videoLink: item.videoLink || "",
+                status: "active",
+              },
+            },
+            { upsert: true, new: true }
+          );
+        } catch (accErr) {
+          console.warn("[Orders] AccessRecord upsert warning:", accErr.message);
+        }
+      }
+
+      // Send access email (non-blocking if SMTP fails, with 8s timeout)
+      if (!order.emailSent && order.customerEmail) {
+        try {
+          const emailResult = await Promise.race([
+            sendProductAccessEmail({
               customerEmail: order.customerEmail,
               customerName: order.customerName,
-              productId: item.productId,
-              productName: item.productName,
-              orderId: order.orderNumber,
-              googleDriveLink: item.googleDriveLink || "",
-              accessFolderLink: item.accessFolderLink || "",
-              downloadFileUrl: item.downloadFileUrl || "",
-              videoLink: item.videoLink || "",
-              status: "active",
-            },
-          },
-          { upsert: true, new: true }
-        );
-      }
-      // Send access email (with 8s timeout so admin UI never hangs)
-      if (!order.emailSent && order.customerEmail) {
-        const emailResult = await Promise.race([
-          sendProductAccessEmail({
-            customerEmail: order.customerEmail,
-            customerName: order.customerName,
-            orderNumber: order.orderNumber,
-            items: order.items,
-            totalAmount: order.totalAmount,
-          }),
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ success: false, error: "Email dispatch timed out" }), 8000)
-          ),
-        ]);
-        if (emailResult.success) {
-          order.emailSent = true;
-          order.emailSentAt = new Date();
+              orderNumber: order.orderNumber,
+              items: order.items,
+              totalAmount: order.totalAmount,
+            }),
+            new Promise((resolve) =>
+              setTimeout(() => resolve({ success: false, error: "Email dispatch timed out" }), 8000)
+            ),
+          ]);
+          if (emailResult && emailResult.success) {
+            order.emailSent = true;
+            order.emailSentAt = new Date();
+            await order.save();
+          }
+        } catch (emailErr) {
+          console.warn("[Orders] Email dispatch warning:", emailErr.message);
         }
       }
     } else if (paymentStatus === "refunded") {
       order.accessStatus = "revoked";
       await AccessRecord.updateMany({ orderId: order.orderNumber }, { status: "revoked" });
+      await order.save();
+    } else {
+      await order.save();
     }
 
-    await order.save();
     return res.json({ success: true, message: "Order updated.", order });
   } catch (error) {
     console.error("[Orders] Status update error:", error);
