@@ -204,7 +204,21 @@ router.put("/:id", protectAdmin, async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const product = await Product.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true });
+    let product = null;
+
+    // Try by MongoDB ObjectId first (valid 24-char hex)
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      product = await Product.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true });
+    }
+
+    // Fallback: try by slug or SKU (handles non-ObjectId strings)
+    if (!product) {
+      product = await Product.findOneAndUpdate(
+        { $or: [{ slug: id.toLowerCase() }, { sku: id }] },
+        { $set: updates },
+        { new: true, runValidators: true }
+      );
+    }
 
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found." });
