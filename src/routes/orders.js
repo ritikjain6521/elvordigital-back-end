@@ -306,23 +306,46 @@ router.put("/:id/status", protectAdmin, async (req, res) => {
     order.paymentStatus = paymentStatus;
     if (paymentStatus === "paid" && order.accessStatus !== "granted") {
       order.accessStatus = "granted";
-      // Ensure access records exist
+      // Ensure full access records exist
       for (const item of order.items) {
         await AccessRecord.findOneAndUpdate(
           { orderId: order.orderNumber, productId: item.productId },
-          { status: "active" },
+          {
+            $set: {
+              customerEmail: order.customerEmail,
+              customerName: order.customerName,
+              productId: item.productId,
+              productName: item.productName,
+              orderId: order.orderNumber,
+              googleDriveLink: item.googleDriveLink || "",
+              accessFolderLink: item.accessFolderLink || "",
+              downloadFileUrl: item.downloadFileUrl || "",
+              videoLink: item.videoLink || "",
+              status: "active",
+            },
+          },
           { upsert: true, new: true }
         );
       }
-      // Send access email
-      await sendProductAccessEmail({
-        customerEmail: order.customerEmail,
-        customerName: order.customerName,
-        orderNumber: order.orderNumber,
-        items: order.items,
-        totalAmount: order.totalAmount,
-      });
-      order.emailSent = true;
+      // Send access email (with 8s timeout so admin UI never hangs)
+      if (!order.emailSent && order.customerEmail) {
+        const emailResult = await Promise.race([
+          sendProductAccessEmail({
+            customerEmail: order.customerEmail,
+            customerName: order.customerName,
+            orderNumber: order.orderNumber,
+            items: order.items,
+            totalAmount: order.totalAmount,
+          }),
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ success: false, error: "Email dispatch timed out" }), 8000)
+          ),
+        ]);
+        if (emailResult.success) {
+          order.emailSent = true;
+          order.emailSentAt = new Date();
+        }
+      }
     } else if (paymentStatus === "refunded") {
       order.accessStatus = "revoked";
       await AccessRecord.updateMany({ orderId: order.orderNumber }, { status: "revoked" });

@@ -282,6 +282,64 @@ router.post("/superprofile-cancel", async (req, res) => {
   }
 });
 
+// @route   POST /api/payment/superprofile-redirect-verify
+// @desc    Verify SuperProfile payment via authenticated Redirect URL secret token
+// @access  Public (requires valid SUPERPROFILE_RETURN_SECRET configured on SuperProfile Redirect URL)
+router.post("/superprofile-redirect-verify", async (req, res) => {
+  try {
+    const { orderNumber, spSecret } = req.body || {};
+    const expectedSecret = process.env.SUPERPROFILE_RETURN_SECRET;
+
+    if (!expectedSecret) {
+      return res.status(503).json({
+        success: false,
+        verified: false,
+        message: "SuperProfile redirect secret is not configured on server.",
+      });
+    }
+
+    if (!spSecret || spSecret !== expectedSecret) {
+      return res.status(403).json({
+        success: false,
+        verified: false,
+        message: "Invalid or missing SuperProfile verification token. Payment not verified.",
+      });
+    }
+
+    if (!orderNumber) {
+      return res.status(400).json({ success: false, verified: false, message: "Order number is required." });
+    }
+
+    const order = await Order.findOne({ orderNumber: String(orderNumber).trim() });
+    if (!order) {
+      return res.status(404).json({ success: false, verified: false, message: "Order not found." });
+    }
+
+    if (order.paymentStatus === "failed") {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        message: "Order was cancelled/failed. No access granted.",
+      });
+    }
+
+    const { emailDispatched } = await grantOrderAccessAndSendEmail(order);
+    return res.json({
+      success: true,
+      verified: true,
+      paymentStatus: order.paymentStatus,
+      accessStatus: order.accessStatus,
+      emailDispatched,
+      orderNumber: order.orderNumber,
+      order,
+      redirectUrl: `/order-success/${order.orderNumber}`,
+    });
+  } catch (error) {
+    console.error("[SuperProfile] Redirect verify error:", error);
+    return res.status(500).json({ success: false, verified: false, message: "Failed to verify redirect." });
+  }
+});
+
 // @route   POST /api/payment/superprofile-webhook
 // @desc    Webhook for SuperProfile to verify payment and grant access + send email
 router.post("/superprofile-webhook", async (req, res) => {
@@ -297,10 +355,47 @@ router.post("/superprofile-webhook", async (req, res) => {
       }
     }
 
-    const payload = req.body || {};
-    const email = (payload.email || payload.customerEmail || payload.buyer_email || "").toLowerCase().trim();
-    const orderNumber = payload.orderNumber || payload.referenceId || "";
-    const rawStatus = String(payload.status || payload.payment_status || payload.event || "").toLowerCase();
+    const rawBody = req.body || {};
+    const nested = rawBody.data || rawBody.payload || rawBody;
+    const customerObj = nested.customer || nested.buyer || nested.user || rawBody.customer || {};
+
+    const email = (
+      nested.email ||
+      nested.customerEmail ||
+      nested.buyer_email ||
+      nested.buyerEmail ||
+      customerObj.email ||
+      rawBody.email ||
+      ""
+    )
+      .toLowerCase()
+      .trim();
+
+    const phoneRaw = String(
+      nested.phone ||
+        nested.customerPhone ||
+        nested.mobile ||
+        customerObj.phone ||
+        customerObj.mobile ||
+        rawBody.phone ||
+        ""
+    ).replace(/\D/g, "");
+    const phoneLast10 = phoneRaw.length >= 10 ? phoneRaw.slice(-10) : "";
+
+    const orderNumber =
+      nested.orderNumber || nested.referenceId || nested.order_id || rawBody.orderNumber || "";
+
+    const rawStatus = String(
+      nested.status ||
+        nested.payment_status ||
+        nested.paymentStatus ||
+        nested.event ||
+        rawBody.status ||
+        rawBody.event ||
+        ""
+    ).toLowerCase();
+
+    console.log("[SuperProfile Webhook]", { orderNumber, email, phoneLast10, rawStatus });
 
     let order = null;
     if (orderNumber) {
@@ -308,6 +403,12 @@ router.post("/superprofile-webhook", async (req, res) => {
     }
     if (!order && email) {
       order = await Order.findOne({ customerEmail: email, paymentStatus: "pending" }).sort({ createdAt: -1 });
+    }
+    if (!order && phoneLast10) {
+      order = await Order.findOne({
+        customerPhone: { $regex: `${phoneLast10}$` },
+        paymentStatus: "pending",
+      }).sort({ createdAt: -1 });
     }
 
     if (!order) {
@@ -338,7 +439,11 @@ router.post("/superprofile-webhook", async (req, res) => {
       rawStatus.includes("complet")
     ) {
       await grantOrderAccessAndSendEmail(order);
-      return res.json({ success: true, message: "Payment verified via SuperProfile webhook. Access granted & email sent.", orderNumber: order.orderNumber });
+      return res.json({
+        success: true,
+        message: "Payment verified via SuperProfile webhook. Access granted & email sent.",
+        orderNumber: order.orderNumber,
+      });
     }
 
     return res.json({ success: true, message: `Webhook status "${rawStatus}" noted; waiting for paid confirmation.` });
