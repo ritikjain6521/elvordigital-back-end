@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const DigitalAsset = require("../models/DigitalAsset");
 const Product = require("../models/Product");
+const UploadedImage = require("../models/UploadedImage");
 const { protectAdmin } = require("../middleware/auth");
 
 const router = express.Router();
@@ -30,30 +31,84 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB limit
 });
 
-// @route   POST /api/assets/upload
-// @desc    Upload product file, video, or archive
-// @access  Private (Admin)
-router.post("/upload", protectAdmin, upload.single("file"), (req, res) => {
+const imageMemoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB limit for MongoDB-stored images
+});
+
+// @route   GET /api/assets/image/:id
+// @desc    Serve permanently stored image from MongoDB
+// @access  Public
+router.get("/image/:id", async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded." });
+    const { id } = req.params;
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(404).send("Image not found");
     }
-
-    const fileUrl = `/uploads/${req.file.filename}`;
-    const fileSizeMb = (req.file.size / (1024 * 1024)).toFixed(1) + " MB";
-
-    return res.json({
-      success: true,
-      message: "File uploaded successfully.",
-      fileName: req.file.originalname,
-      fileUrl,
-      fileSize: fileSizeMb,
-      mimeType: req.file.mimetype,
-    });
+    const img = await UploadedImage.findById(id);
+    if (!img) {
+      return res.status(404).send("Image not found");
+    }
+    res.setHeader("Content-Type", img.mimeType || "image/png");
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return res.send(img.data);
   } catch (error) {
-    console.error("[Assets] Upload error:", error);
-    return res.status(500).json({ success: false, message: "File upload failed." });
+    console.error("[Assets] Image serve error:", error);
+    return res.status(500).send("Failed to load image");
   }
+});
+
+// @route   POST /api/assets/upload
+// @desc    Upload product image (persisted in MongoDB) or large file/archive
+// @access  Private (Admin)
+router.post("/upload", protectAdmin, (req, res, next) => {
+  // Handle upload with multer disk storage, then persist images into MongoDB
+  upload.single("file")(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message || "File upload error." });
+    }
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: "No file uploaded." });
+      }
+
+      const fileSizeMb = (req.file.size / (1024 * 1024)).toFixed(1) + " MB";
+
+      // Persist images permanently in MongoDB so ephemeral disk restarts never break them
+      if (req.file.mimetype && req.file.mimetype.startsWith("image/") && req.file.size <= 15 * 1024 * 1024) {
+        const buffer = fs.readFileSync(req.file.path);
+        const savedImage = await UploadedImage.create({
+          filename: req.file.originalname,
+          mimeType: req.file.mimetype,
+          size: req.file.size,
+          data: buffer,
+        });
+
+        const fileUrl = `/api/assets/image/${savedImage._id}`;
+        return res.json({
+          success: true,
+          message: "Image uploaded and persisted to MongoDB.",
+          fileName: req.file.originalname,
+          fileUrl,
+          fileSize: fileSizeMb,
+          mimeType: req.file.mimetype,
+        });
+      }
+
+      const fileUrl = `/uploads/${req.file.filename}`;
+      return res.json({
+        success: true,
+        message: "File uploaded successfully.",
+        fileName: req.file.originalname,
+        fileUrl,
+        fileSize: fileSizeMb,
+        mimeType: req.file.mimetype,
+      });
+    } catch (error) {
+      console.error("[Assets] Upload error:", error);
+      return res.status(500).json({ success: false, message: "File upload failed." });
+    }
+  });
 });
 
 // @route   GET /api/assets
